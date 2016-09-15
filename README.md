@@ -39,7 +39,7 @@ $ doom --help
                                                                 Chaos Generator for Docker Ecosystems!!
                                                                 version: 1.0.0
 
-usage: py.chaos {chaos|events|server} <optional params>
+usage: doom {chaos|events|server} <optional params>
 
 positional arguments:
   {chaos,events,server}
@@ -69,9 +69,9 @@ optional arguments:
 There are three subparsers defined chaos and actions.
 
 ```
-$ py.chaos chaos --help
+$ doom chaos --help
 
-usage: py.chaos chaos <optional params>
+usage: doom chaos <optional params>
 
 optional arguments:
   --start               Start Chaos Generator (default: False)
@@ -97,9 +97,9 @@ optional arguments:
 ```
 
 ```
-$ py.chaos events --help
+$ doom events --help
 
-usage: py.chaos events <optional params>
+usage: doom events <optional params>
 
 optional arguments:
   --list-events  List available chaos events supported (default: False)
@@ -108,8 +108,8 @@ optional arguments:
 ```
 
 ```
-$ py.chaos server --help
-usage: py.chaos server <optional params>
+$ doom server --help
+usage: doom server <optional params>
 
 optional arguments:
   --host HOST  HOST IP to run the chaos web server on (default: localhost)
@@ -120,13 +120,13 @@ optional arguments:
 
 ##To Start Chaos Webserver ##
 ```
-$ py.chaos server --port <PORT to START>
+$ doom server --port <PORT to START>
 
 ```
 If no arguments are passed , by default the server will start on **localhost:5555** with default docker network as **apocalypso_default**
 ##To Start Chaos on network abc##
 ```
-$ py.chaos chaos --start --network abc --events stop kill burncpu
+$ doom chaos --start --network abc --events stop kill burncpu
 
 ===================================== info =====================================
 
@@ -157,17 +157,17 @@ This will override all command line options, a sample config file is available a
 [resource chaos](apocalypso/config/chaos.yml) and [network chaos](apocalypso/config/network_chaos.yml) 
 
 ```
-$ py.chaos chaos --start --config <path to config>
+$ doom chaos --start --config <path to config>
 ```
 
 ##To Start Chaos on docker ecosystem and exit on error threshold##
 ```
-$ py.chaos -e 1 chaos --start --network minicloud_default --actions stop kill burncpu
+$ doom -e 1 chaos --start --network minicloud_default --actions stop kill burncpu
 ```
 
 ##To Start Chaos on docker ecosystem as deamon process##
 ```
-$ py.chaos --background-run chaos start --network minicloud_default --actions stop kill burncpu
+$ doom --background-run chaos start --network minicloud_default --actions stop kill burncpu
 ```
 
 ##To Stop Chaos running against docker ecosystem##
@@ -177,12 +177,12 @@ $ kill <pid>
 
 ##To Stop Chaos running as deamon on docker ecosystem##
 ```
-$ py.chaos chaos --stop --cloud minicloud
+$ doom chaos --stop --cloud minicloud
 ```
 
 ##To view all the supported chaos events##
 ```
-$ py.chaos events --list-events
+$ doom events --list-events
 ```
 
 # **TBD** #
