@@ -2,11 +2,11 @@
 
 runner:
     # generic py.chaos settings
-    network: minicloud_default
+    network: example_default
     log_level: info
     error_threshold: 1
     trigger: 30s
-  
+
   # let chaos run
 chaos:
   # Chaos events
@@ -39,21 +39,21 @@ chaos:
     networkreorder:
       enabled: true
 
-  
+
 # specifiy instances to run each chaos against, if not mentioned here
 # all enabled chaos actions would be enabled for all running instances
 instances:
    reboot: [redis, cstar]
-   terminate: apigateway
-   burncpu: [relay, auth]
-   killprocesses: machinebus
-   networkdelay: [auth, relay]
-  
+   terminate: c1
+   burncpu: [c2, c3]
+   killprocesses: c1
+   networkdelay: [c1, c2]
+
 # Individual chaos event specific options , otherwise default values persists
 burncpu:
    load: 0.9
    duration: 100
-  
+
 burnram:
     load: 0.9
 

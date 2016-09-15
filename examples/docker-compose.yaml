@@ -15,3 +15,12 @@ services:
     command: sh -c "ping -i1 c1"
     links:
       - c1
+  redis:
+    image: redis:latest
+    ports:
+      - "6379:6379"
+    restart: always
+  cstar:
+      image: cassandra:2.1.8
+      ports:
+       - ":9042:9042"

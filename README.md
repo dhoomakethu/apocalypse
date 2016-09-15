@@ -163,7 +163,7 @@ use 'kill 71227' to stop chaos
 
 ##To Start Chaos on docker ecosystem from a config file##
 This will override all command line options, a sample config file is available at 
-[resource chaos](apocalypso/config/chaos.yml) and [network chaos](apocalypso/config/network_chaos.yml) 
+[resource chaos](config/chaos_complete.yml)
 
 ```
 $ doom chaos --start --config <path to config>
