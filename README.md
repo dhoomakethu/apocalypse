@@ -2,6 +2,14 @@
 
 Apocalypso is resilience test tool to test the behaviour of `Docker Ecosystem` under various failure conditions (Network/hardware/termination etc)
 
+Inspired by the following projects (code attributions provided at necessary place :P)
+
+[Blockade](https://github.com/dcm-oss/blockade)
+[SimianArmy](https://github.com/Netflix/SimianArmy)
+[Vaurien](http://vaurien.readthedocs.io/en/1.8/)
+
+
+
 ## Pre-requisites ##
 * [docker](https://docs.docker.com/engine/installation/)
 * [docker-compose](https://docs.docker.com/compose/install/)
