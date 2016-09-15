@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/html">
+<head>
+
+  <!-- Basic Page Needs
+  –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+  <meta charset="utf-8">
+  <title>Chaos Simulator</title>
+  <meta name="description" content="chaos controller frontend">
+  <meta name="author" content="">
+
+  <!-- Mobile Specific Metas
+  –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="shortcut icon" href="/images/favicon.png?v=1.0"/>
+
+  <!-- FONT
+  –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+  <link href="//fonts.googleapis.com/css?family=Raleway:400,300,600" rel="stylesheet" type="text/css">
+
+  <!-- CSS
+  –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+  <link rel="stylesheet" href="css/normalize.css">
+  <link rel="stylesheet" href="css/skeleton.css">
+
+  <!-- Favicon
+  –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+  <link rel="icon" type="image/png" href="images/favicon.png">
+
+    <style>
+        select option {
+            text-transform: capitalize;
+        }
+        .error {
+            margin: auto;
+            border-radius: 5px;
+            padding: 5px;
+            color: #fff;
+            background: #F2594B;
+            margin: 10px;
+        }
+
+        .service {
+            text-transform: capitalize;
+        }
+
+        .header {
+          margin-top: -60px;
+          margin-left: 75px;
+        }
+
+        .sub-action.active {
+          vertical-align: top;
+          margin-left: 20px;
+          border-left: 4px solid #33C3F0;
+          padding: 5px 10px;
+          transition: all linear 0.2s;
+          transform: scaleY(1);
+
+          position: relative;
+          height: 120px;
+          top: 0;
+        }
+
+        .sub-action.active.transient {
+          height: 150px;
+          overflow:auto
+        }
+
+        .sub-action {
+          vertical-align: top;
+          transition: all linear 0.2s;
+          transform: scaleY(0);
+
+          height: 0;
+          top: -10px;
+        }
+
+        .ip-active {
+          color: #33C3F0;
+        }
+        #refresh {
+             line-height: 12px;
+             width: 200px;
+             font-size: 8pt;
+             font-family: tahoma;
+             float: right;
+             position:absolute;
+             top:60px;
+             right:0;
+        }
+        button.button-primary[disabled] {
+            background-color: #ddd;
+            border-color: #c6c6c6
+        }
+        .spinner {
+          top:60px;
+          right:0;
+          margin: 100px auto;
+          width: 50px;
+          height: 40px;
+          text-align: center;
+          font-size: 16px;
+          position: absolute;
+        }
+
+        .spinner > div {
+          background-color: #333;
+          height: 100%;
+          width: 6px;
+          display: inline-block;
+
+          -webkit-animation: sk-stretchdelay 1.2s infinite ease-in-out;
+          animation: sk-stretchdelay 1.2s infinite ease-in-out;
+        }
+
+        .spinner .rect2 {
+          -webkit-animation-delay: -1.1s;
+          animation-delay: -1.1s;
+        }
+
+        .spinner .rect3 {
+          -webkit-animation-delay: -1.0s;
+          animation-delay: -1.0s;
+        }
+
+        .spinner .rect4 {
+          -webkit-animation-delay: -0.9s;
+          animation-delay: -0.9s;
+        }
+
+        .spinner .rect5 {
+          -webkit-animation-delay: -0.8s;
+          animation-delay: -0.8s;
+        }
+
+        @-webkit-keyframes sk-stretchdelay {
+          0%, 40%, 100% { -webkit-transform: scaleY(0.4) }
+          20% { -webkit-transform: scaleY(1.0) }
+        }
+
+        @keyframes sk-stretchdelay {
+          0%, 40%, 100% {
+            transform: scaleY(0.4);
+            -webkit-transform: scaleY(0.4);
+          }  20% {
+            transform: scaleY(1.0);
+            -webkit-transform: scaleY(1.0);
+          }
+        }
+        }
+    </style>
+</head>
+<body ng-app="simulator" ng-controller="ctrl">
+
+  <!-- Primary Page Layout
+  –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+  <div class="container">
+      <h3>
+        <img src="/images/logo.png" width="75"/>
+        <div class="header">Chaos Simulator</div>
+
+      </h3>
+      <div>
+          <button class="button-primary" id="refresh"
+                  ng-click="refreshServices()" ng-if="!isRefreshing">
+              Refresh Services</button>
+      </div>
+
+      <div class="spinner" ng-if="isRefreshing">
+          <label> Refreshing...</label>
+          <div class="rect1"></div>
+          <div class="rect2"></div>
+          <div class="rect3"></div>
+          <div class="rect4"></div>
+          <div class="rect5"></div>
+      </div>
+      <div class="row">
+        <div class="six columns" style="margin-top: 30px;">
+              <label class="radio-inline">
+                  <input type="radio" ng-model="event_category" value="network"/>
+              Network Events
+              </label>
+              <label class="radio-inline">
+                  <input type="radio" ng-model="event_category" value="resource"/>
+              Resource Events
+              </label>
+             <label class="radio-inline">
+                  <input type="radio" ng-model="event_category" value="general"/>
+              Generic Events
+              </label>
+        </div>
+      </div>
+      <div class="row">
+          <div class="six columns" style="margin-top: 30px;">
+
+            <p class="ten columns">
+                <label>Select a service</label>
+                <select name="service" ng-model="model.service"
+                        class="u-full-width" ng-change="get_current()"
+                        ng-disabled="isRefreshing">
+                  {% for s in services %}
+                    <option value="{{s}}">{{s.replace("_", " ")}}</option>
+                  {% endfor %}
+                </select>
+            </p>
+          </div>
+          <div class="six columns" ng-if="model.service">
+            <p>
+            <h4 class="service" ng-bind="model.service"></h4>
+            <div>
+                <b>Service State: </b><span
+                    ng-bind="current_state"></span>
+            </div>
+            <p>
+            <div ng-if="event_category=='network'" class="animate-if">
+                <form>
+                  <div ng-class="{'ip-active': selected_event == 'restore'}"><input type="radio" ng-model="selected_event" value="restore"> Restore </div>
+
+                  <div
+                          ng-class="{'ip-active': selected_event == 'blackout'}"><input type="radio" ng-model="selected_event" value="network_blackout"> Blackout </div>
+
+                  <div ng-class="{'ip-active': selected_event == 'reorder'}"><input type="radio" ng-model="selected_event" value="reorder"> Reorder </div>
+                  <div ng-class="{active: selected_event == 'reorder'}" class="sub-action transient" ng-init="checked=false">
+                    <div>
+                      <div> <input type="checkbox" ng-model="checked" ng-init="checked=false" /> Correlation </div>
+                      <div ng-if="checked" class="animate-if">
+                        <label>Percentage</label> <input type="number" ng-model="reorder_model.event.correlation" value="25" placeholder="percentage"/>
+                      </div>
+                      <div>
+                        <label>Delay</label> <input type="text" ng-model="reorder_model.event.delay" value="100ms" placeholder="delay time"/>
+                      <!--</div>-->
+                      <!--<div>-->
+                        <label>Reorder</label> <input type="number" ng-model="reorder_model.event.reorder" value="10" placeholder="percentage"/>
+                      <!--</div>-->
+                      <!--<div>-->
+                        <label>Gap</label> <input type="number" ng-model="reorder_model.event.gap" value="1" placeholder="gap"/>
+                      </div>
+                    </div>
+                  </div>
+                  <div ng-class="{'ip-active': selected_event == 'duplicate'}"><input type="radio" ng-model="selected_event" value="duplicate"> Duplicate </div>
+                  <div ng-class="{active: selected_event == 'duplicate'}" class="sub-action transient">
+                    <div>
+                      <div> <input type="checkbox" ng-model="checked"
+                                   ng-init="checked=false" /> Correlation </div>
+                      <div ng-if="checked" class="animate-if">
+                        <label>Percentage</label> <input type="number" ng-model="duplicate_model.event.correlation" value="25" placeholder="percentage"/>
+                      </div>
+
+                      <div>
+                        <label>Duplicate</label> <input type="number" ng-model="duplicate_model.event.duplicate" value="10" placeholder="percentage"/>
+                      </div>
+                    </div>
+                  </div>
+                  <div ng-class="{'ip-active': selected_event == 'corrupt'}"><input type="radio" ng-model="selected_event" value="corrupt"> Corrupt </div>
+                  <div ng-class="{active: selected_event == 'corrupt'}" class="sub-action transient">
+                    <div>
+                      <div> <input type="checkbox" ng-model="checked"
+                                   ng-init="checked=false" /> Correlation </div>
+                      <div ng-if="checked" class="animate-if">
+                        <label>Percentage</label> <input type="number" ng-model="corrupt_model.event.correlation" value="25" placeholder="percentage"/>
+                      </div>
+
+                      <div>
+                        <label>Corrupt</label> <input type="number" ng-model="corrupt_model.event.corrupt" value="10" placeholder="percentage"/>
+                      </div>
+                    </div>
+                  </div>
+                  <div ng-class="{'ip-active': selected_event == 'loss'}"><input type="radio" ng-model="selected_event" value="loss"> Loss </div>
+                  <div ng-class="{active: selected_event == 'loss'}" class="sub-action transient">
+                    <div>
+                      <div> <input type="checkbox" ng-model="checked"
+                                   ng-init="checked=false" /> Correlation </div>
+                      <div ng-if="checked" class="animate-if">
+                        <label>Percentage</label> <input type="number"
+                                                ng-model="loss_model.event.correlation" value="25" placeholder="percentage"/>
+                      </div>
+
+
+                      <div>
+                        <label>Loss</label> <input type="number"
+                                                   ng-model="loss_model.event.loss" value="10" placeholder="percentage"/>
+                      </div>
+                    </div>
+                  </div>
+                  <div ng-class="{'ip-active': selected_event == 'delay'}"><input type="radio" ng-model="selected_event" value="delay"> Delay </div>
+                  <div ng-class="{active: selected_event == 'delay'}" class="sub-action transient">
+                    <div>
+                      <label>Delay</label> <input type="text" ng-model="delay_model.event.delay"  />
+                    </div>
+                    <div>
+                      <label>Jitter</label> <input type="text" ng-model="delay_model.event.jitter" value="100ms" placeholder="jitter"/>
+                    </div>
+                    <div>
+                      <label>Distribution</label>
+                      <select ng-model="delay_model.event.distribution" ng-options="x for x in distribution_list"> </select>
+                    </div>
+                  </div>
+                  <br/>
+                  <br/>
+                  <!--<br/>-->
+                  <!--<br/>-->
+                  <!--<br/>-->
+                  <div>
+                      <button class="button-primary" ng-click="changeBehavior()" ng-disabled="isRefreshing"  >Simulate</button>
+                  </div>
+                </form>
+            </div>
+            <div ng-if="event_category=='general'" class="animate-if">
+                <form>
+                  <div
+                          ng-class="{'ip-active': selected_event == 'stop_services'}"><input type="radio" ng-model="selected_event" value="stop_services"> Stop </div>
+
+                  <div
+                          ng-class="{'ip-active': selected_event == 'terminate_services'}"><input type="radio" ng-model="selected_event" value="terminate_services"> Terminate </div>
+
+                  <div
+                          ng-class="{'ip-active': selected_event == 'reboot_services'}"><input type="radio" ng-model="selected_event" value="reboot_services"> Reboot </div>
+
+                  <br/>
+                  <br/>
+                  <!--<br/>-->
+                  <!--<br/>-->
+                  <!--<br/>-->
+                  <div>
+                      <button class="button-primary" ng-click="changeBehavior()" ng-disabled="isRefreshing" >Simulate</button>
+                  </div>
+                </form>
+
+                <!--</p>-->
+
+            </div>
+            <div ng-if="event_category=='resource'" class="animate-if">
+                <form>
+                  <div ng-class="{'ip-active': selected_event == 'burn_cpu'}"><input type="radio" ng-model="selected_event" value="burn_cpu"> Burn CPU </div>
+                  <div ng-class="{active: selected_event == 'burn_cpu'}"
+                       class="sub-action transient">
+                    <div>
+                      <label>Load</label> <input type="number" min="0" max="100" ng-model="burncpu_model.event.cpuload"  placeholder="Load (1-100)"/>
+                    </div>
+                    <div>
+                      <label>Duration</label> <input type="number" ng-model="burncpu_model.event.duration" value="100ms" placeholder="Duration in seconds"/>
+                    </div>
+                    <div>
+                      <label>Cores</label> <input type="number" ng-model="burncpu_model.event.cpu_core" value=1 placeholder="CPU Cores"/>
+                    </div>
+
+                  </div>
+                  <div ng-class="{'ip-active': selected_event == 'burn_ram'}"><input type="radio" ng-model="selected_event" value="burn_ram"> Burn RAM </div>
+                  <div ng-class="{active: selected_event == 'burn_ram'}"
+                       class="sub-action transient">
+                    <div>
+                      <label>Load</label> <input type="number" min="0" max="100" ng-model="burnram_model.event.ramload"  placeholder="Load (1-100)"/>
+                    </div>
+                    <div>
+                      <label>Duration</label> <input type="number" ng-model="burnram_model.event.duration" value="100ms" placeholder="Duration in seconds"/>
+                    </div>
+
+                  </div>
+                  <div
+                          ng-class="{'ip-active': selected_event == 'kill_process'}"><input type="radio" ng-model="selected_event" value="kill_process"> Kill Processes </div>
+
+                  <br/>
+                  <br/>
+                  <!--<br/>-->
+                  <!--<br/>-->
+                  <!--<br/>-->
+                  <div>
+                      <button class="button-primary" ng-click="changeBehavior()" ng-disabled="isRefreshing" >Simulate</button>
+                  </div>
+                </form>
+
+                <!--</p>-->
+
+            </div>
+          </div>
+      </div>
+      <div class="row" ng-if="error">
+          <div class="error" ng-bind="error"></div>
+    </div>
+  </div>
+
+<!-- End Document
+  –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+</body>
+<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.4.5/angular.min.js"></script>
+<script src="js/app.js"></script>
+</html>
+
+

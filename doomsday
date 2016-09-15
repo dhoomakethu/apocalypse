@@ -1,0 +1,286 @@
+#!/bin/bash
+# set -x
+# Version-2 Date: April/1/2016
+
+set -o noclobber -o nounset -o pipefail
+shopt -s extglob # Required for $CASE_ARGS to work in case statement
+
+CLIENT_VERSION=1.10.3
+SERVER_VERSION=1.10.2
+COMPOSE_VERSION=1.6.2
+VERBOSE=""
+FILE="docker-compose.yml"
+DIR=$(basename "$0")
+PROJ="None"
+PROJ_IP=""
+PROJ_PORT=""
+ALL_PROJ=""
+ARGS=""
+CTRL_C="1"
+NO_PULL=""
+DEV="no"
+IGNORE_SERVICE="no"
+CASSANDRA=""
+CHAOS_COMMAND=""
+CHAOS_HOST=""
+CHAOS_PORT=""
+CHAOS_NETWORK=""
+CHAOS_RUN_TYPE=""
+CHAOS_CONTAINER="doom"
+
+function usage {
+ log ":usage:
+
+ $0 start <chaos> | <server> [ Runs resiliency events on Docker environment ]
+ $0 stop  [ Stops resiliency events/server]
+
+ OPTIONAL:
+ [--verbose] : Show more output
+ [ -x ] : Do not do docker-compose pull (use existing docker images) "
+ echo
+ log ":: Note: CTRL+C at startup will terminate the cluster"
+ echo
+}
+
+
+function chaos_usage {
+ log ":usage: ./doomsday chaos server-> run chaos webserver "
+ log ":usage: ./doomsday chaos run -> runs random choas event on running micro-services .
+
+       E.g 1> To run chaos webserver on localhost at port 5555 on docker
+       network doomsday_default
+       ./doomsday chaos server
+
+       or to run chaos webserver with different port and network values
+
+       ./doomsday chaos server --port <PORT> --network <NETWORK>
+
+       E.g 2> To run chaos events with out webserver
+       ./doomsday chaos run | --run-network-chaos | --run-resource-chaos | --run-generic-chaos | --config=<ABS PATH TO CONFIG FILE>
+
+       E.g 3> To login to chaos container with out running server/chaos events
+       ./doomsday chaos dev
+       "
+}
+
+
+function checkHelp {
+	_primary_args="develop rewire terminate chaos test"
+	if [ -z ${1:-} ] || [ $1 = "help" ] || [ $1 = "-h" ] || [ $1 = "--help" ] || [[ ${2:-} == *"$_primary_args"* ]]
+	then
+		usage
+		exit
+	elif [[ ${2:-} = "help" ]] || [[ ${2:-} = "-h" ]] || [[ ${2:-} = "--help" ]]
+	then
+		eval ${1}_usage
+		exit
+	fi
+}
+
+
+function _fmt {
+ local color_ok="\x1b[32m"
+ local color_bad="\x1b[31m"
+ local color_reset="\x1b[0m"
+ local color_note="\x1b[33m"
+ local color="${color_ok}"
+ if [[ "$1" = *"Error"* ]] || [[ "$1" = *"Warning"* ]] ; then
+	 color="${color_bad}"
+ elif [[ "$1" = *"Note"* ]]
+ then
+    color="${color_note}"
+ fi
+ if [[ "${TERM}" != "xterm"* ]]; then
+	 # Don't use colors on pipes or non-recognized terminals
+	 color=""; color_reset=""
+ fi
+ echo -e "$(date -u +"%Y-%m-%d %H:%M:%S UTC") ${color}$(printf "[%9s]" "$*")${color_reset}";
+}
+
+function log {
+ if [ -n "${1:-}" ]
+ then
+	IN="$1"
+ else
+	 read -r IN
+ fi
+ if [ -z ${SILENT:-} ] || [[ "${IN}" = *"::"* ]] || [[ "${IN}" = *"Error"*  ]] || [[ "${IN}" = *"Note"* ]]
+ then
+	 _fmt "$IN"
+ fi
+}
+
+# trap ctrl-c and call ctrl_c()
+trap ctrl_c INT
+function ctrl_c {
+ if [ -z ${CTRL_C:-} ]
+ then
+ 	initializeEnv
+ 	stopEnv
+	CTRL_C="1"
+	exit
+ else
+	 exit
+ fi
+}
+
+function initializeEnv {
+ ISMAC=$(uname -s)
+ if [[ "$ISMAC" = "Darwin" ]]
+ then
+	HOST_IP=$(for i in $(ifconfig | grep ": flags" | grep -Ev "p2p0|utun0|tun0|lo|vboxnet" | sed -n "s/\:.*//p"); do ifconfig $i | grep "inet " | awk '{print $2}'; done)
+	COMPOSE_HOST_IPADDR=$(docker-machine ip "$(docker-machine active 2>/dev/null)" 2>/dev/null)
+	if [ -z $COMPOSE_HOST_IPADDR ];then
+		COMPOSE_HOST_IPADDR=${HOST_IP}
+	fi
+	export COMPOSE_HOST_IPADDR=$COMPOSE_HOST_IPADDR
+	DOCKER="docker"
+	DOCKER_COMPOSE="${DOCKER}-compose"
+ else
+	HOST_IP=$(ifconfig | grep 'inet ' | tail -n 1 | tr -d [a-z:] | awk '{print $1}')
+	COMPOSE_HOST_IPADDR=${HOST_IP}
+	export COMPOSE_HOST_IPADDR=$COMPOSE_HOST_IPADDR
+	DOCKER="sudo -E docker"
+	DOCKER_COMPOSE="${DOCKER}-compose"
+ fi
+ log ":: Host IP $HOST_IP ::"
+}
+
+function parseArgs {
+  shift
+  while [ -n "${1:-}" ]
+  do
+  	case "$1" in
+  		--verbose)
+        	VERBOSE="--verbose"
+        	shift
+  		;;
+	-x)
+		NO_PULL="1"
+		shift
+		;;
+	--port)
+		CHAOS_PORT=$2
+		shift
+		shift
+                ;;
+	--network)
+	        CHAOS_NETWORK=$2
+            shift
+	        shift
+            ;;
+	-n)
+		IGNORE_SERVICE="yes"
+		shift
+		;;
+    server)
+		CHAOS_RUN_TYPE="server"
+		shift
+		;;
+	run)
+		CHAOS_RUN_TYPE="run"
+		shift
+		;;
+	--config)
+		CHAOS_CONFIG=$2
+		shift
+		shift
+		;;
+	dev)
+		DEV="yes"
+		shift
+		;;
+	*)
+        if ! echo "${CASE_ARGS[@]}" | grep -q "$1" 2>/dev/null && [ ${IGNORE_SERVICE} = "no" ]
+        then
+            log "Error : Unknown option/service $1"
+            exit 1
+        else
+            if [ ! $1 = "test" ] || [ ! $1 = "chaos" ]
+            then
+                 ARGS="${1:-} ${2:-}"
+                 shift
+		 shift
+            fi
+        fi
+		;;
+  	esac
+  done
+}
+
+function runChaos {
+    _args=$@
+    _args=$(echo "$_args" | sed "s@server@@" | awk -F: '{print $1}')
+    _args=$(echo "$_args" | sed "s@run@@" | awk -F: '{print $1}')
+    _args=$(echo "$_args" | sed "s@-x@@" | awk -F: '{print $1}')
+    _args=$(echo "$_args" | sed "s@--config@@" | awk -F: '{print $1}')
+    _args=$(echo "$_args" | sed "s@dev@@" | awk -F: '{print $1}')
+    _args=$(echo "$_args" | sed "s@chaos@@" | awk -F: '{print $1}')
+    [ -z ${_args:-} ] && { chaos_usage && exit 1; }
+
+    CONFIG="/tmp/config/chaos_complete.yml"
+    IMAGE="dhoomakethu/apocalypse:latest"
+    CHAOS_BASE_CMD="$DOCKER run --name $CHAOS_CONTAINER  --privileged -v /var/run/docker.sock:/var/run/docker.sock "
+
+    [ ! -z ${NO_PULL:-} ] || {
+        log ":: Note :: Apocalypse requires ubuntu:trusty image, a latest version will be pulled as a precondition"
+        $DOCKER pull ubuntu:trusty
+        log ":: Pulling latest $IMAGE, use '-x' if you do not want to pull the latest image!!!"
+    	$DOCKER pull $IMAGE;
+    }
+
+
+    if [[ $CHAOS_RUN_TYPE = "server" ]]
+    then
+        CHAOS_COMMAND="doom server"
+        CHAOS_PORT="${CHAOS_PORT:-5555}"
+        CHAOS_NETWORK="${CHAOS_NETWORK:-bridge}"
+        log ":: Running Apocalypse webserver on $HOST_IP @ port $CHAOS_PORT"
+        log ":: Starting Apocalypse container - $CHAOS_CONTAINER"
+        eval "$CHAOS_BASE_CMD -d -p $CHAOS_PORT:$CHAOS_PORT -e NETWORK=$CHAOS_NETWORK $IMAGE sh -c '$CHAOS_COMMAND --port $CHAOS_PORT --network $CHAOS_NETWORK'"
+    elif [[ $CHAOS_RUN_TYPE = "run" ]]
+    then
+        if ! [ -z ${CHAOS_CONFIG+x} ]
+        then
+            _args=$(echo "$_args" | sed "s@$CHAOS_CONFIG@@" | awk -F: '{print $1}')
+            CHAOS_BASE_CMD="$CHAOS_BASE_CMD -v $CHAOS_CONFIG:/tmp/parsed_config.yml"
+            CHAOS_COMMAND="doom chaos --start $_args --config /tmp/parsed_config.yml"
+        else
+            CHAOS_COMMAND="doom chaos --start $_args"
+        fi
+        log ":: Running Apocalypse"
+        log ":: Starting Apocalypse container - $CHAOS_CONTAINER"
+        eval "$CHAOS_BASE_CMD -d $IMAGE sh -c '$CHAOS_COMMAND'"
+    elif [ ${DEV} = "yes" ]
+    then
+        log ":: Running Chaos in dev mode "
+        log ":: Starting Chaos container - $CHAOS_CONTAINER"
+        eval "$CHAOS_BASE_CMD -it $IMAGE sh"
+    fi
+
+}
+
+
+#
+# Check for "help" or "-h" flags/options
+# and print appropiate usage document(function)
+#
+checkHelp $@
+
+if [ "${1:-}" = "start" ]
+then
+    initializeEnv
+    IGNORE_SERVICE="yes"
+    _args=$@
+    parseArgs "$@"
+    runChaos $_args
+elif [ "${1:-}" = "stop" ]
+then
+    log ":: Stopping and Removing container $CHAOS_CONTAINER"
+    initializeEnv
+    $DOCKER stop $CHAOS_CONTAINER
+    $DOCKER rm $CHAOS_CONTAINER
+    exit
+else
+    log "Error : Unknown command '$1'"
+fi

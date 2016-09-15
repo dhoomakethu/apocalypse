@@ -1,0 +1,156 @@
+#!/usr/bin/env python
+"""
+@author: dhoomakethu
+"""
+from apocalypse import __version__
+from apocalypse.chaos.executor import events, unregister
+from apocalypse.main import main
+from apocalypse.utils.parser import configure_cli_parser
+from apocalypse.utils.parser import CLIArgParser, build_args
+
+import pprint
+
+DESCRIPTION = "Chaos Generator for Docker Ecosystems!!"
+
+TITLE = """
+   _____                              .__                              ._._.
+  /  _  \ ______   ____   ____ _____  |  | ___.________  ______ ____   | | |
+ /  /_\  \\\____ \ /  _ \_/ ___\\\__  \ |  |<   |  \____ \/  ____/ __ \\  | | |
+/    |    |  |_> (  <_> \  \___ / __ \|  |_\___  |  |_> \___ \\\  ___/   \|\|
+\____|__  |   __/ \____/ \___  (____  |____/ ____|   __/____  >\___  >  ____
+        \/|__|               \/     \/     \/    |__|       \/     \/   \/\/
+
+
+                                                                %s
+                                                                version: %s
+""" % (DESCRIPTION, __version__)
+
+
+APP_USAGE = "py.chaos {chaos|events|server} <optional params>"
+CHAOS_USAGE = "py.chaos chaos <optional params>"
+EVENTS_USAGE = "py.chaos events <optional params>"
+SERVER_USAGE = "py.chaos server <optional params>"
+DEFAULT_ARGS = {
+    "network": "bridge",
+    "log_level": "info",
+    "error_threshold": 10,
+    "trigger": "30s",
+    "max_workers": 10
+
+}
+
+
+def _set_network_chaos_flag(chaos_event):
+    """
+    Set/Unset network chaos flags
+    :param chaos_event:
+    :return:
+    """
+    flag = args.enable_network_chaos if args.subparser == "chaos" else False
+    if not flag and 'network' in chaos_event:
+        setattr(args, 'enable_network_chaos', True)
+
+
+def _update_args(args):
+
+    # override default args with config file
+    # if an arg is provided both on cli and in config file , CLI
+    for k, v in DEFAULT_ARGS.items():
+        if not getattr(args, k, None):
+            setattr(args, k, v)
+    if args.subparser != "server":
+        list_all = args.all if args.subparser == "events" else False
+        list_events = args.list_events if args.subparser == "events" else False
+        if args.config:
+            from apocalypse.utils.parser import ConfigParser
+            maps = ConfigParser.read(args.config)
+            generic = maps.get('runner', {})
+            instances = maps.get("instances", {})
+            for k, v in generic.items():
+                if not getattr(args, k, None):
+                    setattr(args, k, v)
+            for k, v in maps.get('chaos', {}).iteritems():
+                if not list_all:
+                    if not v.get("enabled", False):
+                        unregister(k)
+                    else:
+                        args.events.append(k)
+                        _set_network_chaos_flag(k)
+            if not list_events:
+                for k, v in instances.items():
+                    v = v if isinstance(v, list) else [v]
+                    setattr(args, "%s_services" % k, v)
+                for k, v in {k: v for k, v in maps.items()
+                             if not k in ['chaos', 'instances',
+                                          'runner']}.items():
+                    for k1, v1 in v.iteritems():
+                        setattr(args, "%s_%s" % (k, k1), v1)
+        else:
+            if not args.events:
+                setattr(args, "events", [event.lower()
+                                         for event, klass in
+                                             events().iteritems()
+                                         if klass.enabled is True])
+            for _event in args.events:
+                if _set_network_chaos_flag(_event):
+                    break
+
+
+if __name__ == "__main__":
+    parser = CLIArgParser(
+            title=TITLE,
+            prog='py.chaos',
+            usage=APP_USAGE
+
+    )
+    # global options
+    configure_cli_parser('global', parser, __version__)
+
+    # subparsers
+    subparsers = parser.add_subparsers(dest="subparser",
+                                       help='help for subcommand chaos')
+
+    # Chaos arguments
+    chaos_parser = subparsers.add_parser('chaos',
+                                         usage=CHAOS_USAGE,
+                                         help='Start Chaos generator')
+
+    configure_cli_parser('chaos', chaos_parser, __version__)
+    build_args(chaos_parser, events())
+
+    # Actions arguments
+    event_parser = subparsers.add_parser('events',
+                                         usage=EVENTS_USAGE,
+                                         help="Chaos events")
+    configure_cli_parser('events', event_parser, __version__)
+
+    # Server arguments
+    server_parser = subparsers.add_parser('server',
+                                          usage=SERVER_USAGE,
+                                          help="Chaos web server")
+    configure_cli_parser('server', server_parser, __version__)
+
+    # Parse args
+    args = parser.parse()
+
+    _update_args(args)
+    if args.subparser == "events":
+        if args.list_events:
+            if args.all:
+                pprint.pprint(sorted(events().keys()))
+            else:
+                enabled_events = sorted([event.lower() for event, klass in
+                                         events().iteritems() if klass.enabled is True])
+                active_events = list(set(args.events) & set(enabled_events))
+                pprint.pprint(sorted([ae.upper() for ae in active_events]))
+        else:
+            event_parser.print_help()
+
+        exit(0)
+
+    print TITLE + "\n"  # start app
+    # if not args.max_workers:
+    #     setattr(args, "max_workers", DEFAULT_ARGS["max_workers"])
+    main(args)
+
+

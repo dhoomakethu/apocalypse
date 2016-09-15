@@ -1,0 +1,8 @@
+include requirements.txt
+include README.md
+include apocalypse/bin/stress
+include apocalypse/server/templates/*
+include apocalypse/server/templates/css/*
+include apocalypse/server/templates/images/*
+include apocalypse/server/templates/js/*
+include apocalypse/server/README.md

@@ -1,0 +1,65 @@
+# """
+# @author: dhoomakethu
+# """
+from __future__ import absolute_import, unicode_literals
+
+from apocalypse.utils.logger import get_logger
+
+
+chaos_logger = get_logger()
+
+
+class ChaosBase(type):
+
+    def __new__(meta, name, bases, attrs, **kwargs):
+        options = {'vm-instances': [
+            "virtual machine instances to run '%s' chaos against",
+            list,
+            []]
+        }
+        if attrs.get('options', None):
+            attrs['options'].update(options)
+        else:
+            attrs['options'] = options
+        return super(ChaosBase, meta).__new__(meta, name, bases,
+                                               attrs, **kwargs)
+
+
+class Chaos(object):
+    """
+    Base Chaos actions class
+
+    Command line options are provided for each action is to be extended from
+    class dict 'options' with in the derived class
+
+    Each key, value pair in the options dict needs to be in the format of
+    option-name, option, where option is a tuple of
+    (description, type_, default, choices) choices being optional
+
+    E.g
+    class ChaosActionA(Chaos):
+        options = {'instance': ("virtual machine instance to run %s chaos
+         against", list, [])
+        }
+
+    the cli option on py.chaos --help for this option will be displayed as
+    --chaosactiona.instance
+
+    """
+    __metaclass__ = ChaosBase
+    enabled = True
+
+    def __init__(self, driver=None):
+        # update default option
+        self.options['vm-instances'][0] %= self.__class__.__name__
+        self.app = driver
+
+    def _prepare(self):
+        self.app.connect()
+        if not self.instance:
+            vm = self.app.choice()
+        else:
+            vm = self.instance
+        chaos_logger.info("Executing chaos action "
+                          "'%s' on '%s" % (self.__class__.__name__, vm))
+        return vm

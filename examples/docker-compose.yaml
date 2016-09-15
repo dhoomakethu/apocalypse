@@ -1,0 +1,17 @@
+version: '2'
+services:
+  c1:
+    image: ubuntu:trusty
+    command: /bin/sleep 30000
+
+  c2:
+    image: ubuntu:trusty
+    command: sh -c "ping -i1 c1"
+    links:
+      - c1
+
+  c3:
+    image: ubuntu:trusty
+    command: sh -c "ping -i1 c1"
+    links:
+      - c1

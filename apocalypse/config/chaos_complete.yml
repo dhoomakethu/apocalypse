@@ -1,0 +1,84 @@
+# The file contains the properties for py.chaos
+
+runner:
+    # generic py.chaos settings
+    network: minicloud_default
+    log_level: info
+    error_threshold: 1
+    trigger: 30s
+  
+  # let chaos run
+chaos:
+  # Chaos events
+    stop:
+      enabled: true
+    reboot:
+      enabled: true
+    terminate:
+      enabled: true
+    burncpu:
+      enabled: true
+    burnram:
+      enabled: true
+  # burnio:
+      #enabled: false
+  # burndisk:
+      # enabled: false
+    killprocesses:
+      enabled: false
+    networkblackout:
+      enabled: true
+    networkcorrupt:
+      enabled: true
+    networkdelay:
+      enabled: true
+    networkloss:
+      enabled: true
+    networkduplicate:
+      enabled: true
+    networkreorder:
+      enabled: true
+
+  
+# specifiy instances to run each chaos against, if not mentioned here
+# all enabled chaos actions would be enabled for all running instances
+instances:
+   reboot: [redis, cstar]
+   terminate: apigateway
+   burncpu: [relay, auth]
+   killprocesses: machinebus
+   networkdelay: [auth, relay]
+  
+# Individual chaos event specific options , otherwise default values persists
+burncpu:
+   load: 0.9
+   duration: 100
+  
+burnram:
+    load: 0.9
+
+networkdelay:
+   delay: 2s
+   jitter: 100ms
+   distribution: normal
+
+networkcorrupt:
+  # courrption percentage and correlation
+  corrupt: 10
+  correlation: 25
+
+networkloss:
+  # loss percentage
+  loss: 10
+
+networkduplicate:
+  # duplication percentage
+  duplicate: 5
+
+networkreorder:
+   delay: 2s
+   reorder: 10
+   correlation: 25
+
+
+

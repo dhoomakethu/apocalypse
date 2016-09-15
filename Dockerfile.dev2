@@ -1,0 +1,20 @@
+FROM gliderlabs/alpine:latest
+ENV TERM=xterm
+
+RUN apk --no-cache add python py-pip
+RUN pip install --upgrade pip
+RUN apk --no-cache add py-psutil
+
+EXPOSE 5555
+
+COPY dist/apocalypse-1.0.0.tar.gz /tmp/
+COPY apocalypse/config /apocalypse/config/
+# ADD apocalypse/server /app
+RUN apk --no-cache add --virtual build-dependencies wget ca-certificates python-dev build-base git\
+    && pip install setuptools --upgrade\
+    && pip install git+https://github.com/dhoomakethu/python-coloredlogs.git@master \
+    && pip install /tmp/apocalypse-1.0.0.tar.gz \
+    && apk del build-dependencies \
+    && rm -f /tmp/*
+
+RUN rm -f /tmp/*.tar.gz
