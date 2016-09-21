@@ -21,9 +21,9 @@ def path(name=""):
     name to be an absolute path.
 
     Example:
-    If BrightEdge Root is: /home/vagrant/brightedge
-    path() will return "/home/vagrant/brightedge"
-    path("tools/analyze") will return "/home/vagrant/brightedge/tools/analyze"
+    If BrightEdge Root is: /home/vagrant/mydir
+    path() will return "/home/vagrant/mydir"
+    path("dir1/subdir1") will return "/home/vagrant/mydir/dir1/subdir1"
     path("/usr/bin/python") will return "/usr/bin/python"
     """
     if name.startswith(os.path.sep):
