@@ -10,7 +10,7 @@ from apocalypse.utils.parser import CLIArgParser, build_args
 
 import pprint
 
-DESCRIPTION = "Chaos Generator for Docker Ecosystems!!"
+DESCRIPTION = "Chaos for Docker Ecosystems!!"
 
 TITLE = """
    _____                              .__                              ._._.
@@ -148,9 +148,10 @@ if __name__ == "__main__":
 
         exit(0)
 
-    print TITLE + "\n"  # start app
-    # if not args.max_workers:
-    #     setattr(args, "max_workers", DEFAULT_ARGS["max_workers"])
+    from apocalypse.utils.helpers import colored_print
+
+    colored_print(TITLE)  # start app
+
     main(args)
 
 

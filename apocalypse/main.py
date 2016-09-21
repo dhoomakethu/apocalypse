@@ -80,24 +80,7 @@ def main(args):
         max_workers = getattr(args, 'max_workers', 10)
         ChaosGenerator.set_threshold(error_threshold)
         network = args.network
-        try:
-            error = False
-            app = ChaosApp(network)
-        except NoServiceRunningError:
-            logger.critical(
-                "No active containers/services "
-                "found for network : \033[1m '%s' \033[0m" % network)
-
-            error = True
-        except NetError:
-            logger.critical(
-                "Network not found : \033[1m '%s' \033[0m" % network)
-
-            error = True
-        finally:
-            if error:
-                logger.critical("Stopping Apocalypse!!!")
-                exit(1)
+        app = ChaosApp(network)
         events = filter_event_args(args)
         if events:
             network_chaos_enabled = args.enable_network_chaos

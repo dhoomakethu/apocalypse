@@ -5,9 +5,72 @@
 from __future__ import absolute_import, unicode_literals
 
 
-class TwisterException(Exception):
+class HandleException(object):
+    func = None
+
+    def __init__(self, logger, *exceptions):
+        self.logger = logger
+        self.exceptions = tuple(ex for ex in exceptions
+                                if issubclass(ex, Exception)
+                                or
+                                isinstance(ex, Exception)
+                                )
+        if not self.exceptions:
+            self.exceptions = Exception
+
+    def __call__(self, *args, **kwargs):
+        if self.func is None:
+            self.func = args[0]
+            return self
+        # self.func = args[0]
+        try:
+            return self.func(*args, **kwargs)
+        except self.exceptions as e:
+            self.logger.debug("IN HandleExceptions")
+            self.logger.debug(e)
+            raise e
+        except Exception as e:
+            self.logger.debug("IN Generic Exception handler")
+            self.logger.debug(e)
+            raise e
+
+
+def handle_exception(logger, retVal, *exceptions):
     """
-    Base exception with in Twister
+    Decorator to handle known exceptions
+
+    :param logger: logger
+    :param retVal: "exit" to exit program, "raise" to re-raise execption
+    :param exceptions: list of exceptions to handle
+    :return: return value of function decorated
+    """
+
+    def except_wrapper(func):
+        excpts = tuple(ex for ex in exceptions if issubclass(ex, Exception)
+                       or isinstance(ex, Exception)
+                       )
+
+        def wrapper(*args, **kwargs):
+            try:
+                return func(*args, **kwargs)
+            except excpts as e:
+                logger.debug(e)
+                logger.debug("supplied arguments %s: %s" % (args[1:], kwargs))
+                if retVal == "raise":
+                    raise e
+                elif retVal == "exit":
+                    logger.critical(e.message)
+                    logger.critical("Stopping Apocalypse!!!")
+                    exit(1)
+
+        return wrapper
+
+    return except_wrapper
+
+
+class ApocalypseError(Exception):
+    """
+    Base exception with in Apocalypse
     """
 
 
@@ -17,7 +80,7 @@ class ConfigParserException(Exception):
     """
 
 
-class UnknownChaosEvent(TwisterException):
+class UnknownChaosEvent(ApocalypseError):
     """
     Unknow chaos action execption
     """
@@ -32,19 +95,19 @@ class UnknownChaosEvent(TwisterException):
         return unicode(self.__str__())
 
 
-class ServiceNotRunningError(TwisterException):
+class ServiceNotRunningError(ApocalypseError):
     """
     No Specified VM exists exception
     """
 
 
-class InsufficientPermissionsException(TwisterException):
+class InsufficientPermissionsException(ApocalypseError):
     """
     Twister is executed with insufficient permissions
     """
 
 
-class AppError(TwisterException):
+class AppError(ApocalypseError):
     """Webserver applocation errors"""
     status_code = 400
 
@@ -65,9 +128,9 @@ class NetError(AppError):
     """Error while executing network events"""
 
 
-class UnknownServiceError(TwisterException):
+class UnknownServiceError(ApocalypseError):
     """Service info not available"""
 
 
-class NoServiceRunningError(TwisterException):
+class NoServiceRunningError(ApocalypseError):
     """No service found running for the given network"""

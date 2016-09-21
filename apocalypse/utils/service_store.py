@@ -199,13 +199,15 @@ class ServiceStore(object):
         network = [netw for netw in networks if self._network in netw[
             'Name']]
         if not network:
-            raise NetError("Network %s not found" % self._network)
+            self._network = "\033[1m '%s' \033[0m" % self._network
+            raise NetError("Network not found: %s" % self._network)
         network = network[0]
         ctrs = network.get("Containers", {})
         if not ctrs:
+            network = "\033[1m'%s'\033[0m" % network['Name']
             raise NoServiceRunningError(
                 "No active containers/services found "
-                "for network : '%s'" % network['Name']
+                "for network : %s" % network
             )
         self._services = _create_service_map(ctrs, network.get('Name'))
 

@@ -4,7 +4,8 @@
 from __future__ import absolute_import, unicode_literals
 import os
 from apocalypse.app import App
-from apocalypse.exceptions import TwisterException, ServiceNotRunningError
+from apocalypse.exceptions import ServiceNotRunningError, handle_exception
+from apocalypse.exceptions import NoServiceRunningError, NetError
 from apocalypse.chaos.events.net import NetworkEmulator
 from apocalypse.utils.service_store import (
     ServiceStore, update_service_state)
@@ -24,6 +25,7 @@ curr_dir = curr_dir.split(os.sep)[:-1]
 stress_exe = os.sep.join(curr_dir)+stress_exe
 
 
+# @HandleException(logger, NoServiceRunningError, NetError)
 class ChaosApp(App):
     """
     Represents  Chaos app
@@ -37,6 +39,7 @@ class ChaosApp(App):
         self._driver = DockerClient()
         self.init()
 
+    @handle_exception(logger, "exit", NoServiceRunningError, NetError)
     def init(self):
         """
         creates an connection to compute engine
@@ -44,6 +47,7 @@ class ChaosApp(App):
         self._service_store = ServiceStore(self.driver, self.network)
         self._emulator = NetworkEmulator(self.store, self.driver)
 
+    @handle_exception(logger, "exit", NoServiceRunningError, NetError)
     def init_network_emulator(self):
         logger.info("Initializing Network emulator")
         self.store.update_network_devices()

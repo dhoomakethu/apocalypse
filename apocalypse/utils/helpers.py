@@ -171,13 +171,59 @@ class ValueStore(object):
         return "%s(%s)" % (self.__class__.__name__, ", ".join(elems))
 
 
-class ClassProperty(object):
+class Color:
 
-    def __init__(self, prop):
-        self.getter = prop
+    # STYLES
+    CEND = '\33[0m'
+    CBOLD = '\33[1m'
+    CITALIC = '\33[3m'
+    CURL = '\33[4m'
+    CSELECTED = '\33[7m'
 
-    def __get__(self, obj, obj_type):
-        return self.getter(obj_type)
+    # COLORS
+    CBLACK = '\33[30m'
+    CRED = '\33[31m'
+    CGREEN = '\33[32m'
+    CYELLOW = '\33[33m'
+    CBLUE = '\33[34m'
+    CVIOLET = '\33[35m'
+    CBEIGE = '\33[36m'
+    CWHITE = '\33[37m'
+
+COLOR_DICT = {
+    "red": Color.CRED,
+    "green": Color.CGREEN,
+    "blue": Color.CBLUE,
+    "black": Color.CBLACK,
+    "yellow": Color.CYELLOW,
+    "violet": Color.CVIOLET,
+    "beige": Color.CBEIGE,
+    "white": Color.CWHITE
+}
+
+STYLE_DICT = {
+    "bold": Color.CBOLD,
+    "italic": Color.CITALIC,
+    "underline": Color.CURL,
+    "select": Color.CSELECTED
+}
 
 
-cls_property = ClassProperty
+def colored_print(msg, color="blue", style='bold', newline=True):
+    """
+    Prints a colored message on supported terminal
+    :param msg: Message to be printed
+    :param color: red, green, yellow, blue, violet, beige
+    :param style: bold, italic, underlined, selected
+    :param newline: True/False inserts newline after msg
+    :return: None
+    """
+    color = COLOR_DICT.get(color, Color.CWHITE)
+    style = STYLE_DICT.get(style, Color.CEND)
+    try:
+        print(color + style + msg + Color.CEND)
+    except Exception:
+        print msg
+    if newline:
+        print
+
