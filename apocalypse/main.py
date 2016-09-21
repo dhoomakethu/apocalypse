@@ -9,6 +9,7 @@ from apocalypse.app.chaosapp import ChaosApp
 from apocalypse.utils.deamonize import startstop
 from apocalypse.utils.logger import init_logger
 from apocalypse.utils.helpers import banner
+from apocalypse.exceptions import NoServiceRunningError, NetError
 import signal
 
 LOGFILE = '/tmp/twister.log'
@@ -79,7 +80,24 @@ def main(args):
         max_workers = getattr(args, 'max_workers', 10)
         ChaosGenerator.set_threshold(error_threshold)
         network = args.network
-        app = ChaosApp(network)
+        try:
+            error = False
+            app = ChaosApp(network)
+        except NoServiceRunningError:
+            logger.critical(
+                "No active containers/services "
+                "found for network : \033[1m '%s' \033[0m" % network)
+
+            error = True
+        except NetError:
+            logger.critical(
+                "Network not found : \033[1m '%s' \033[0m" % network)
+
+            error = True
+        finally:
+            if error:
+                logger.critical("Stopping Apocalypse!!!")
+                exit(1)
         events = filter_event_args(args)
         if events:
             network_chaos_enabled = args.enable_network_chaos
@@ -107,7 +125,7 @@ def main(args):
             if config:
                 logger.warning("Chaos configuration read from '%s'" % config)
             logger.warning(
-                "Starting Chaos with events")
+                "Starting Chaos with events on network: '%s'" % network)
             logger.warning(banner("="))
 
             logger.warning(pprint.pformat(events))

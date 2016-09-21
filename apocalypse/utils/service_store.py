@@ -5,7 +5,8 @@
 from __future__ import absolute_import, unicode_literals
 from apocalypse.utils.docker_client import docker_run, DockerClientException
 from apocalypse.utils.logger import get_logger
-from apocalypse.exceptions import NetError, UnknownServiceError
+from apocalypse.exceptions import (NetError, UnknownServiceError,
+                                   NoServiceRunningError)
 
 import re
 
@@ -50,10 +51,13 @@ EVENT_CATEGORY = {
 }
 
 
-def _create_service_map(ctrs):
+def _create_service_map(ctrs, network):
     services = {}
     for k, v in ctrs.items():
-        service = v["Name"].split("_")[1]
+        if network == 'bridge':
+            service = v['Name']
+        else:
+            service = v["Name"].split("_")[1]
         v["Id"] = k
         services[service] = dict([("ctr_info", v),
                                   ("state", State("NORMAL"))])
@@ -198,7 +202,12 @@ class ServiceStore(object):
             raise NetError("Network %s not found" % self._network)
         network = network[0]
         ctrs = network.get("Containers", {})
-        self._services = _create_service_map(ctrs)
+        if not ctrs:
+            raise NoServiceRunningError(
+                "No active containers/services found "
+                "for network : '%s'" % network['Name']
+            )
+        self._services = _create_service_map(ctrs, network.get('Name'))
 
     def get_state(self, service):
         ser = self.get_service(service)

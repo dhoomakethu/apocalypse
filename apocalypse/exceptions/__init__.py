@@ -67,3 +67,7 @@ class NetError(AppError):
 
 class UnknownServiceError(TwisterException):
     """Service info not available"""
+
+
+class NoServiceRunningError(TwisterException):
+    """No service found running for the given network"""
